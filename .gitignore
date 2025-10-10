@@ -36,3 +36,7 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+*.deb
+node_modules/
+package-lock.json
