@@ -67,6 +67,7 @@ pipeline {
                     """
 
                     sh './build-deb.sh'
+                    sh 'git checkout -- build-deb.sh' // Don't commit this change
                 }
             }
         }
