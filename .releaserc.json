@@ -1,12 +1,6 @@
 {
-  "branches": [
-    "main",
-    {
-      "name": "pre-release/*",
-      "prerelease": false
-    }
-  ],
   "repositoryUrl": "https://github.com/galvagnimatteo/automated-release-demo",
+  "tagFormat": "v${version}",
   "plugins": [
     [
       "@semantic-release/commit-analyzer",
