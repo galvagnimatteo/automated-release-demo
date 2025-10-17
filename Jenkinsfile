@@ -146,6 +146,74 @@ Tag ${env.RELEASE_VERSION} will be on the last commit of main after merge (use r
             }
         }
 
+        stage('Move release tag to main') {
+            when {
+                allOf {
+                    branch 'main'
+                    expression {
+                        return env.GIT_COMMIT_MSG.contains('chore(release):') &&
+                               env.GIT_COMMIT_MSG.contains('[skip ci]')
+                    }
+                    expression {
+                        def tagsOnCurrentCommit = sh(
+                            script: 'git tag --points-at HEAD',
+                            returnStdout: true
+                        ).trim()
+
+                        if (tagsOnCurrentCommit) {
+                            echo "✅ Current commit already has tag(s): ${tagsOnCurrentCommit}"
+                            return false
+                        } else {
+                            echo "🔄 Current commit has no tags, need to move tag"
+                            return true
+                        }
+                    }
+                }
+            }
+            steps {
+                script {
+                    echo "🔄 Moving tag to main commit after merge..."
+
+                    sh '''
+                        git config user.name "Jenkins CI"
+                        git config user.email "jenkins@assext.com"
+
+                        VERSION=$(echo "${GIT_COMMIT_MSG}" | grep -oP "chore\\(release\\): \\K[0-9]+\\.[0-9]+\\.[0-9]+" || echo "")
+
+                        if [ -z "$VERSION" ]; then
+                            echo "❌ Could not extract version from commit message: ${GIT_COMMIT_MSG}"
+                            exit 1
+                        fi
+
+                        TAG="v${VERSION}"
+                        echo "📦 Version: ${VERSION}"
+                        echo "🏷️  Tag: ${TAG}"
+
+                        git fetch --tags
+
+                        if git rev-parse "${TAG}" >/dev/null 2>&1; then
+                            OLD_TAG_COMMIT=$(git rev-parse "${TAG}")
+                            echo "Old tag ${TAG} points to: ${OLD_TAG_COMMIT}"
+
+                            echo "Deleting old tag ${TAG}..."
+                            git push https://${GIT_CREDENTIALS_USR}:${GIT_CREDENTIALS_PSW}@github.com/${GIT_CREDENTIALS_USR}/automated-release-demo.git --delete "${TAG}" || true
+                            git tag -d "${TAG}" || true
+                        fi
+
+                        CURRENT_COMMIT=$(git rev-parse HEAD)
+                        echo "Creating tag ${TAG} on main commit: ${CURRENT_COMMIT}"
+
+                        git tag -a "${TAG}" -m "Release ${VERSION}"
+
+                        git push https://${GIT_CREDENTIALS_USR}:${GIT_CREDENTIALS_PSW}@github.com/${GIT_CREDENTIALS_USR}/automated-release-demo.git "${TAG}"
+
+                        echo "✅ Tag ${TAG} successfully moved to main!"
+                        echo "Verify at: https://github.com/${GIT_CREDENTIALS_USR}/automated-release-demo/releases/tag/${TAG}"
+                    '''
+                }
+            }
+        }
+
         stage('Release to Public') {
             when {
                 buildingTag()
