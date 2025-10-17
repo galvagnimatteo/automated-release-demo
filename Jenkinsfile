@@ -79,7 +79,19 @@ pipeline {
                     sh """
                         git checkout main
                         git pull origin main
+
+                        if git show-ref --verify --quiet refs/heads/${env.PRE_RELEASE_BRANCH}; then
+                            git branch -D ${env.PRE_RELEASE_BRANCH}
+                        fi
+
+                        git fetch origin
+                        if git show-ref --verify --quiet refs/remotes/origin/${env.PRE_RELEASE_BRANCH}; then
+                            git push https://${GIT_CREDENTIALS_USR}:${GIT_CREDENTIALS_PSW}@github.com/${GIT_CREDENTIALS_USR}/automated-release-demo.git --delete ${env.PRE_RELEASE_BRANCH}
+                        fi
+
                         git checkout -b ${env.PRE_RELEASE_BRANCH}
+
+                        git push https://${GIT_CREDENTIALS_USR}:${GIT_CREDENTIALS_PSW}@github.com/${GIT_CREDENTIALS_USR}/automated-release-demo.git ${env.PRE_RELEASE_BRANCH}
                     """
 
                     sh '''
