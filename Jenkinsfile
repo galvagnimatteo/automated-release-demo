@@ -210,7 +210,8 @@ pipeline {
             steps {
                 script {
                     def tagName = sh(script: 'git tag --points-at HEAD', returnStdout: true).trim()
-                    def version = sh(script: 'mvn help:evaluate -Dexpression=project.version -q -DforceStdout', returnStdout: true).trim()
+                    def jarFile = sh(script: 'ls target/*.jar | head -n 1 | xargs basename', returnStdout: true).trim()
+                    def debFile = sh(script: 'ls *.deb | head -n 1', returnStdout: true).trim()
 
                     echo """
                     ═══════════════════════════════════════════════════════════
@@ -218,13 +219,44 @@ pipeline {
                     ═══════════════════════════════════════════════════════════
 
                     Tag:     ${tagName}
-                    Version: ${version}
 
                     Artifacts to be published:
-                    - JAR:  automated-release-demo-${version}.jar
-                    - DEB:  automated-release-demo_${version}_all.deb
+                    - JAR:  ${jarFile}
+                    - DEB:  ${debFile}
 
                     ✅ Release ${tagName} published successfully!
+
+                    ═══════════════════════════════════════════════════════════
+                    """
+                }
+            }
+        }
+
+        // Upload artifacts to internal repo for devs
+        stage('Release to Internal') {
+            when {
+                not {
+                    branch 'main'
+                }
+            }
+            steps {
+                script {
+                    def jarFile = sh(script: 'ls target/*.jar | head -n 1 | xargs basename', returnStdout: true).trim()
+                    def debFile = sh(script: 'ls *.deb | head -n 1', returnStdout: true).trim()
+
+                    echo """
+                    ═══════════════════════════════════════════════════════════
+                    📦 RELEASING TO INTERNAL REPOSITORY
+                    ═══════════════════════════════════════════════════════════
+
+                    Branch:  ${env.CURRENT_BRANCH}
+                    Commit:  ${env.GIT_COMMIT_SHORT}
+
+                    Artifacts to be published:
+                    - JAR:  ${jarFile}
+                    - DEB:  ${debFile}
+
+                    ✅ SNAPSHOT artifacts published successfully!
 
                     ═══════════════════════════════════════════════════════════
                     """
