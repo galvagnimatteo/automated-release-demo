@@ -107,7 +107,8 @@ pipeline {
                     ).trim()
 
                     sh """
-                        git tag -d ${env.RELEASE_VERSION} 2>/dev/null || true
+                        git push https://${GIT_CREDENTIALS_USR}:${GIT_CREDENTIALS_PSW}@github.com/${GIT_CREDENTIALS_USR}/automated-release-demo.git --delete ${env.RELEASE_VERSION} 2>/dev/null || true
+                        git tag -d ${env.RELEASE_VERSION}
                         git push https://${GIT_CREDENTIALS_USR}:${GIT_CREDENTIALS_PSW}@github.com/${GIT_CREDENTIALS_USR}/automated-release-demo.git ${env.PRE_RELEASE_BRANCH}
                     """
 
