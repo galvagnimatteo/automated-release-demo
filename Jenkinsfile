@@ -62,7 +62,7 @@ pipeline {
             steps {
                 script {
                     sh """
-                        sed -i 's/CHANGE_LIST="-SNAPSHOT"/CHANGE_LIST="${env.CHANGELIST_DEB}"/' build-deb.sh
+                        sed -i 's/CHANGE_LIST="-SNAPSHOT"/CHANGE_LIST="${env.CHANGELIST}"/' build-deb.sh
                         cat build-deb.sh | grep CHANGE_LIST
                     """
 
