@@ -1,3 +1,9 @@
+## [2.1.0](https://github.com/[secure]/automated-release-demo/compare/v2.0.0...v2.1.0) (2025-10-17)
+
+### Features
+
+* upload internal ([#25](https://github.com/[secure]/automated-release-demo/issues/25)) ([6fb38a8](https://github.com/[secure]/automated-release-demo/commit/6fb38a8b18edcac57ac17809f0177d79d737e8b7))
+
 ## [2.0.0](https://github.com/[secure]/automated-release-demo/compare/v1.0.2...v2.0.0) (2025-10-17)
 
 ### ⚠ BREAKING CHANGES
