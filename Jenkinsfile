@@ -19,6 +19,8 @@ pipeline {
         )
     }
 
+    // The changelist is concatenated to the version if not on main branch, and it's
+    // defined as -SNAPSHOT-<commit_hash>
     stages {
         stage('Checkout') {
             steps {
@@ -31,19 +33,41 @@ pipeline {
                         returnStdout: true
                     ).trim()
                     env.CURRENT_BRANCH = env.GIT_BRANCH.replaceAll('origin/', '')
+
+                    env.GIT_COMMIT_SHORT = sh(
+                        script: 'git rev-parse --short HEAD',
+                        returnStdout: true
+                    ).trim()
+
+                    if (env.CURRENT_BRANCH == 'main') {
+                        env.CHANGELIST = ''
+                        echo "📦 Building RELEASE version (no SNAPSHOT)"
+                    } else {
+                        env.CHANGELIST = "-SNAPSHOT-${env.GIT_COMMIT_SHORT}"
+                        echo "📦 Building SNAPSHOT version: ${env.CHANGELIST}"
+                    }
                 }
             }
         }
 
         stage('Build JAR') {
             steps {
-                sh 'mvn clean package'
+                script {
+                    sh "mvn clean package -Dchangelist=${env.CHANGELIST}"
+                }
             }
         }
 
         stage('Build DEB Package') {
             steps {
-                sh './build-deb.sh'
+                script {
+                    sh """
+                        sed -i 's/CHANGE_LIST="-SNAPSHOT"/CHANGE_LIST="${env.CHANGELIST_DEB}"/' build-deb.sh
+                        cat build-deb.sh | grep CHANGE_LIST
+                    """
+
+                    sh './build-deb.sh'
+                }
             }
         }
 
