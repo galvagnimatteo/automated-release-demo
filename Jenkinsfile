@@ -120,6 +120,35 @@ pipeline {
                 }
             }
         }
+
+        stage('Release to Public') {
+            when {
+                buildingTag()
+            }
+            steps {
+                script {
+                    def tagName = env.TAG_NAME ?: sh(script: 'git describe --tags --exact-match', returnStdout: true).trim()
+                    def version = sh(script: 'mvn help:evaluate -Dexpression=project.version -q -DforceStdout', returnStdout: true).trim()
+
+                    echo """
+                    ═══════════════════════════════════════════════════════════
+                    🎉 RELEASING TO PUBLIC REPOSITORY
+                    ═══════════════════════════════════════════════════════════
+
+                    Tag:     ${tagName}
+                    Version: ${version}
+
+                    Artifacts to be published:
+                    - JAR:  automated-release-demo-${version}.jar
+                    - DEB:  automated-release-demo_${version}_all.deb
+
+                    ✅ Release ${tagName} published successfully!
+
+                    ═══════════════════════════════════════════════════════════
+                    """
+                }
+            }
+        }
     }
 
     post {
@@ -135,7 +164,10 @@ pipeline {
                     URL: https://github.com/${GIT_CREDENTIALS_USR}/automated-release-demo/pull/${env.PR_NUMBER}
 
                     ⚠️  IMPORTANT: Merge using 'Rebase and merge' to keep tag on last commit!
+                    After merge, manually trigger build for tag ${env.RELEASE_VERSION} to publish release.
                     """
+                } else if (env.TAG_NAME) {
+                    echo "🎉 Release published successfully!"
                 } else {
                     echo "✅ Build completed successfully"
                 }
