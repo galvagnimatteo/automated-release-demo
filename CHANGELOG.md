@@ -1,3 +1,9 @@
+## [1.0.1](https://github.com/[secure]/automated-release-demo/compare/v1.0.0...v1.0.1) (2025-10-17)
+
+### Bug Fixes
+
+* removed echos ([#12](https://github.com/[secure]/automated-release-demo/issues/12)) ([52375c0](https://github.com/[secure]/automated-release-demo/commit/52375c00b6b4200fd61837cd15c2ca58399e84da))
+
 ## 1.0.0 (2025-10-17)
 
 ### Features
