@@ -7,79 +7,142 @@ pipeline {
     }
 
     environment {
-        APP_NAME = 'automated-release-demo'
+        GIT_CREDENTIALS = credentials('github-credentials')
+        GITHUB_TOKEN = credentials('github-credentials')
     }
 
     stages {
         stage('Checkout') {
             steps {
                 checkout scm
-            }
-        }
-
-        stage('Build') {
-            steps {
-                sh 'mvn clean package'
-            }
-        }
-
-        stage('Get Version from POM') {
-            steps {
                 script {
-                    env.APP_VERSION = sh(
-                        script: "mvn help:evaluate -Dexpression=project.version -q -DforceStdout",
+                    env.GIT_COMMIT_MSG = sh(
+                        script: 'git log -1 --pretty=%B',
                         returnStdout: true
                     ).trim()
-                    echo "Building version: ${env.APP_VERSION}"
+                    env.CURRENT_BRANCH = env.GIT_BRANCH.replaceAll('origin/', '')
+                    echo "Building branch: ${env.CURRENT_BRANCH}"
+                    echo "Commit message: ${env.GIT_COMMIT_MSG}"
                 }
             }
         }
 
-        stage('Create DEB Package') {
+        stage('Build JAR') {
             steps {
-                script {
-                    sh """
-                        mkdir -p build/deb/${APP_NAME}_${APP_VERSION}/DEBIAN
-                        mkdir -p build/deb/${APP_NAME}_${APP_VERSION}/usr/share/${APP_NAME}
+                sh '''
+                    mvn clean package
+                    echo "✅ JAR built successfully"
+                    ls -lh target/*.jar
+                '''
+            }
+        }
 
-                        cp target/${APP_NAME}-${APP_VERSION}.jar build/deb/${APP_NAME}_${APP_VERSION}/usr/share/${APP_NAME}/
-
-                        cat > build/deb/${APP_NAME}_${APP_VERSION}/DEBIAN/control << EOF
-Package: ${APP_NAME}
-Version: ${APP_VERSION}
-Section: utils
-Priority: optional
-Architecture: all
-Maintainer: Matteo Galvagni <matteo@example.com>
-Description: Automated Release Demo
- Demo project for testing automated releases with Jenkins
-EOF
-
-                        dpkg-deb --build build/deb/${APP_NAME}_${APP_VERSION}
-
-                        mv build/deb/${APP_NAME}_${APP_VERSION}.deb target/
-
-                        echo "DEB package created: ${APP_NAME}_${APP_VERSION}.deb"
-                    """
-                }
+        stage('Build DEB Package') {
+            steps {
+                sh '''
+                    ./build-deb.sh
+                    echo "✅ DEB package built"
+                    ls -lh *.deb
+                '''
             }
         }
 
         stage('Archive Artifacts') {
             steps {
-                archiveArtifacts artifacts: 'target/*.jar,target/*.deb', fingerprint: true
+                archiveArtifacts artifacts: 'target/*.jar, *.deb', fingerprint: true
+            }
+        }
+
+        stage('Prepare Release') {
+            when {
+                allOf {
+                    branch 'main'
+                    not {
+                        expression {
+                            return env.GIT_COMMIT_MSG.contains('[skip ci]') ||
+                                   env.GIT_COMMIT_MSG.contains('chore(release):')
+                        }
+                    }
+                }
+            }
+            steps {
+                script {
+                    echo "🚀 Starting release preparation..."
+
+                    sh '''
+                        git config user.name "Jenkins CI"
+                        git config user.email "jenkins@assext.com"
+                    '''
+
+                    def timestamp = new Date().format('yyyyMMdd-HHmmss')
+                    env.PRE_RELEASE_BRANCH = "pre-release/${timestamp}"
+
+                    sh """
+                        git checkout main
+                        git pull origin main
+                        git checkout -b ${env.PRE_RELEASE_BRANCH}
+                    """
+
+                    sh '''
+                        npx semantic-release --no-ci
+                    '''
+
+                    env.RELEASE_VERSION = sh(
+                        script: 'git describe --tags --abbrev=0',
+                        returnStdout: true
+                    ).trim()
+
+                    echo "✅ Created version: ${env.RELEASE_VERSION}"
+
+                    sh """
+                        git push https://${GIT_CREDENTIALS_USR}:${GIT_CREDENTIALS_PSW}@github.com/${GIT_CREDENTIALS_USR}/automated-release-demo.git ${env.PRE_RELEASE_BRANCH} --follow-tags
+                    """
+
+                    sh """
+                        curl -X POST \
+                          -H "Authorization: token ${GIT_CREDENTIALS_PSW}" \
+                          -H "Accept: application/vnd.github.v3+json" \
+                          https://api.github.com/repos/${GIT_CREDENTIALS_USR}/automated-release-demo/pulls \
+                          -d '{
+                            "title": "Release ${env.RELEASE_VERSION}",
+                            "head": "${env.PRE_RELEASE_BRANCH}",
+                            "base": "main",
+                            "body": "🤖 Automated release preparation for version ${env.RELEASE_VERSION}\\n\\n## Changes\\n- Version bumped to ${env.RELEASE_VERSION}\\n- CHANGELOG.md updated\\n- POM.xml updated\\n\\n**Review and approve to complete the release.**\\n\\nTag \`${env.RELEASE_VERSION}\` will be on the last commit of \`main\` after merge (use rebase and merge!)."
+                          }' > pr-response.json
+                    """
+
+                    env.PR_NUMBER = sh(
+                        script: 'cat pr-response.json | grep -o \'"number": [0-9]*\' | grep -o \'[0-9]*\'',
+                        returnStdout: true
+                    ).trim()
+
+                    echo "✅ Created PR #${env.PR_NUMBER}"
+                }
             }
         }
     }
 
     post {
         success {
-            echo "✅ Build successful!"
-            echo "JAR: ${APP_NAME}-${APP_VERSION}.jar"
-            echo "DEB: ${APP_NAME}_${APP_VERSION}.deb"
+            script {
+                if (env.PRE_RELEASE_BRANCH) {
+                    echo """
+                    ✅ Release preparation complete!
+
+                    Branch: ${env.PRE_RELEASE_BRANCH}
+                    Version: ${env.RELEASE_VERSION}
+                    PR: #${env.PR_NUMBER}
+                    URL: https://github.com/${GIT_CREDENTIALS_USR}/automated-release-demo/pull/${env.PR_NUMBER}
+
+                    ⚠️  IMPORTANT: Merge using 'Rebase and merge' to keep tag on last commit!
+                    """
+                } else {
+                    echo "✅ Build completed successfully"
+                }
+            }
         }
         failure {
-            echo '❌ Build failed!'
+            echo "❌ Build failed!"
         }
         always {
             cleanWs()
