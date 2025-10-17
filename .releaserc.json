@@ -31,13 +31,13 @@
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "mvn versions:set -DnewVersion=${nextRelease.version} && mvn versions:commit"
+        "prepareCmd": "mvn versions:set -DnewVersion=${nextRelease.version} -DprocessAllModules && mvn versions:commit && sed -i 's/^REVISION=.*/REVISION=\"${nextRelease.version}\"/' build-deb.sh"
       }
     ],
     [
       "@semantic-release/git",
       {
-        "assets": ["pom.xml", "CHANGELOG.md"],
+        "assets": ["pom.xml", "CHANGELOG.md", "build-deb.sh"],
         "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
       }
     ]

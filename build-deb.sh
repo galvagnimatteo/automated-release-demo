@@ -1,7 +1,9 @@
 #!/bin/bash
 set -e
 
-VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+REVISION="1.0.2"
+CHANGE_LIST="-SNAPSHOT"
+VERSION="${REVISION}${CHANGE_LIST}"
 PACKAGE_NAME="automated-release-demo"
 BUILD_DIR="build/deb"
 
@@ -21,7 +23,7 @@ Section: utils
 Priority: optional
 Architecture: all
 Depends: openjdk-17-jre
-Maintainer: Your Name <your.email@example.com>
+Maintainer: galvagnimatteo <galvagni.matteo@protonmail.com>
 Description: Automated Release Demo Application
  A simple Java application for testing automated releases.
 EOF
