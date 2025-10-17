@@ -9,7 +9,7 @@
     <version>${revision}${changelist}</version>
 
     <properties>
-        <revision>1.0.2</revision>
+        <revision>2.0.0</revision>
         <changelist>-SNAPSHOT</changelist>
 
         <maven.compiler.source>17</maven.compiler.source>
