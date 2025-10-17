@@ -24,6 +24,8 @@ pipeline {
             steps {
                 checkout scm
                 script {
+                    sh 'git fetch --tags --force'
+
                     env.GIT_COMMIT_MSG = sh(
                         script: 'git log -1 --pretty=%B',
                         returnStdout: true
@@ -52,8 +54,7 @@ pipeline {
         }
 
         // This uses semantic release to bump version, generate changelog and create tag.
-        // Since we are working on branch pre-release, tag will be created there and will need to be moved to main
-        // once completed.
+        // Since we are working on branch pre-release, tag will be created there, so we manually remove it before pushing.
         stage('Prepare Release') {
             when {
                 allOf {
@@ -106,7 +107,8 @@ pipeline {
                     ).trim()
 
                     sh """
-                        git push https://${GIT_CREDENTIALS_USR}:${GIT_CREDENTIALS_PSW}@github.com/${GIT_CREDENTIALS_USR}/automated-release-demo.git ${env.PRE_RELEASE_BRANCH} --follow-tags
+                        git tag -d ${env.RELEASE_VERSION} 2>/dev/null || true
+                        git push https://${GIT_CREDENTIALS_USR}:${GIT_CREDENTIALS_PSW}@github.com/${GIT_CREDENTIALS_USR}/automated-release-demo.git ${env.PRE_RELEASE_BRANCH}
                     """
 
                     def prBody = """🤖 Automated release preparation for ${env.RELEASE_VERSION}"""
@@ -127,8 +129,8 @@ pipeline {
             }
         }
 
-        // Once pre-release has been merged into main, we move the tag created by semantic release on main
-        stage('Move Tag to Main') {
+        // Once pre-release has been merged into main, we create the tag on main
+        stage('Tag for release') {
             when {
                 allOf {
                     branch 'main'
@@ -137,11 +139,23 @@ pipeline {
                                env.GIT_COMMIT_MSG.contains('[skip ci]')
                     }
                     expression {
-                        def tagsOnCurrentCommit = sh(
-                            script: 'git tag --points-at HEAD',
+                        def version = sh(
+                            script: 'echo "${GIT_COMMIT_MSG}" | grep -oP "chore\\\\(release\\\\): \\\\K[0-9]+\\\\.[0-9]+\\\\.[0-9]+" || echo ""',
                             returnStdout: true
                         ).trim()
-                        return !tagsOnCurrentCommit
+
+                        if (!version) {
+                            return false
+                        }
+
+                        sh 'git fetch --tags --force'
+
+                        def tagExists = sh(
+                            script: "git tag -l v${version}",
+                            returnStdout: true
+                        ).trim()
+
+                        return tagExists == ''
                     }
                 }
             }
@@ -154,36 +168,21 @@ pipeline {
                         VERSION=$(echo "${GIT_COMMIT_MSG}" | grep -oP "chore\\(release\\): \\K[0-9]+\\.[0-9]+\\.[0-9]+")
                         TAG="v${VERSION}"
 
-                        git fetch --tags
-
-                        if git rev-parse "${TAG}" >/dev/null 2>&1; then
-                            git push https://${GIT_CREDENTIALS_USR}:${GIT_CREDENTIALS_PSW}@github.com/${GIT_CREDENTIALS_USR}/automated-release-demo.git --delete "${TAG}"
-                            git tag -d "${TAG}"
-                        fi
-
                         git tag -a "${TAG}" -m "Release ${VERSION}"
                         git push https://${GIT_CREDENTIALS_USR}:${GIT_CREDENTIALS_PSW}@github.com/${GIT_CREDENTIALS_USR}/automated-release-demo.git "${TAG}"
                     '''
+
+                    env.TAG_CREATED = 'true'
                 }
             }
         }
 
-        // When building a tag on main, we publish on artifactory
+        // If tag has been created we upload to RC
         stage('Release to RC') {
             when {
                 allOf {
                     branch 'main'
-                    expression {
-                        return env.GIT_COMMIT_MSG.contains('chore(release):') &&
-                               env.GIT_COMMIT_MSG.contains('[skip ci]')
-                    }
-                    expression {
-                        def tagsOnCurrentCommit = sh(
-                            script: 'git tag --points-at HEAD',
-                            returnStdout: true
-                        ).trim()
-                        return tagsOnCurrentCommit != ''
-                    }
+                    expression { env.TAG_CREATED == 'true' }
                 }
             }
             steps {
