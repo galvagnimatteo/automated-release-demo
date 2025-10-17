@@ -98,17 +98,23 @@ pipeline {
                         git push https://${GIT_CREDENTIALS_USR}:${GIT_CREDENTIALS_PSW}@github.com/${GIT_CREDENTIALS_USR}/automated-release-demo.git ${env.PRE_RELEASE_BRANCH} --follow-tags
                     """
 
+                    def prBody = """🤖 Automated release preparation for version ${env.RELEASE_VERSION}
+
+## Changes
+- Version bumped to ${env.RELEASE_VERSION}
+- CHANGELOG.md updated
+- POM.xml updated
+
+**Review and approve to complete the release.**
+
+Tag ${env.RELEASE_VERSION} will be on the last commit of main after merge (use rebase and merge!)."""
+
                     sh """
                         curl -X POST \
                           -H "Authorization: token ${GIT_CREDENTIALS_PSW}" \
                           -H "Accept: application/vnd.github.v3+json" \
                           https://api.github.com/repos/${GIT_CREDENTIALS_USR}/automated-release-demo/pulls \
-                          -d '{
-                            "title": "Release ${env.RELEASE_VERSION}",
-                            "head": "${env.PRE_RELEASE_BRANCH}",
-                            "base": "main",
-                            "body": "🤖 Automated release preparation for version ${env.RELEASE_VERSION}\\n\\n## Changes\\n- Version bumped to ${env.RELEASE_VERSION}\\n- CHANGELOG.md updated\\n- POM.xml updated\\n\\n**Review and approve to complete the release.**\\n\\nTag \`${env.RELEASE_VERSION}\` will be on the last commit of \`main\` after merge (use rebase and merge!)."
-                          }' > pr-response.json
+                          -d '{"title": "Release ${env.RELEASE_VERSION}", "head": "${env.PRE_RELEASE_BRANCH}", "base": "main", "body": ${groovy.json.JsonOutput.toJson(prBody)}}' > pr-response.json
                     """
 
                     env.PR_NUMBER = sh(
