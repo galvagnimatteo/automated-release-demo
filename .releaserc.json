@@ -1,5 +1,11 @@
 {
-  "branches": ["pre-release/*"],
+  "branches": [
+    "main",
+    {
+      "name": "pre-release/*",
+      "prerelease": false
+    }
+  ],
   "repositoryUrl": "https://github.com/galvagnimatteo/automated-release-demo",
   "plugins": [
     [
