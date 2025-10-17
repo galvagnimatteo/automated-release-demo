@@ -1,3 +1,18 @@
+## [2.0.0](https://github.com/[secure]/automated-release-demo/compare/v1.0.2...v2.0.0) (2025-10-17)
+
+### ⚠ BREAKING CHANGES
+
+* wrong variable (#21)
+* let's see if snapshot works (#20)
+
+### Features
+
+* let's see if snapshot works ([#20](https://github.com/[secure]/automated-release-demo/issues/20)) ([2055aec](https://github.com/[secure]/automated-release-demo/commit/2055aecd7308caa745f0be80c3f7c67d018a5d52))
+
+### Bug Fixes
+
+* wrong variable ([#21](https://github.com/[secure]/automated-release-demo/issues/21)) ([cf85e9c](https://github.com/[secure]/automated-release-demo/commit/cf85e9c9f76a25dbb995f1914d82d778d59f5bb7))
+
 ## [1.0.2](https://github.com/[secure]/automated-release-demo/compare/v1.0.1...v1.0.2) (2025-10-17)
 
 ### Bug Fixes

@@ -6,7 +6,7 @@
 
     <groupId>org.example</groupId>
     <artifactId>automated-release-demo</artifactId>
-    <version>${revision}${changelist}</version>
+    <version>2.0.0</version>
 
     <properties>
         <revision>1.0.2</revision>

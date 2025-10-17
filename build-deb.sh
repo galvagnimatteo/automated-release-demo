@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-REVISION="1.0.2"
-CHANGE_LIST="-SNAPSHOT"
+REVISION="2.0.0"
+CHANGE_LIST=""
 VERSION="${REVISION}${CHANGE_LIST}"
 PACKAGE_NAME="automated-release-demo"
 BUILD_DIR="build/deb"
