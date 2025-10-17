@@ -1,4 +1,5 @@
 {
+  "branches": ["pre-release"],
   "repositoryUrl": "https://github.com/galvagnimatteo/automated-release-demo",
   "tagFormat": "v${version}",
   "plugins": [

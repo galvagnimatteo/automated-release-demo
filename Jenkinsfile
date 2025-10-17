@@ -74,8 +74,7 @@ pipeline {
                         git config user.email "jenkins@assext.com"
                     '''
 
-                    def timestamp = new Date().format('yyyyMMdd-HHmmss')
-                    env.PRE_RELEASE_BRANCH = "pre-release/${timestamp}"
+                    env.PRE_RELEASE_BRANCH = "pre-release"
 
                     sh """
                         git checkout main
