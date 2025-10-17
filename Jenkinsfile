@@ -94,9 +94,17 @@ pipeline {
                         git push https://${GIT_CREDENTIALS_USR}:${GIT_CREDENTIALS_PSW}@github.com/${GIT_CREDENTIALS_USR}/automated-release-demo.git ${env.PRE_RELEASE_BRANCH}
                     """
 
-                    sh '''
-                        npx semantic-release --no-ci
-                    '''
+                    withEnv([
+                        "GIT_BRANCH=${env.PRE_RELEASE_BRANCH}",
+                        "BRANCH_NAME=${env.PRE_RELEASE_BRANCH}"
+                    ]) {
+                        sh '''
+                            echo "Current branch: $(git rev-parse --abbrev-ref HEAD)"
+                            echo "GIT_BRANCH env: $GIT_BRANCH"
+
+                            npx semantic-release --no-ci
+                        '''
+                    }
 
                     env.RELEASE_VERSION = sh(
                         script: 'git describe --tags --abbrev=0',
