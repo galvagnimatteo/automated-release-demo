@@ -1,3 +1,9 @@
+## [1.0.2](https://github.com/[secure]/automated-release-demo/compare/v1.0.1...v1.0.2) (2025-10-17)
+
+### Bug Fixes
+
+* don't push tag on pre-release ([#14](https://github.com/[secure]/automated-release-demo/issues/14)) ([d721e64](https://github.com/[secure]/automated-release-demo/commit/d721e642293c406e004f10216c09beabbcf5973d))
+
 ## [1.0.1](https://github.com/[secure]/automated-release-demo/compare/v1.0.0...v1.0.1) (2025-10-17)
 
 ### Bug Fixes
