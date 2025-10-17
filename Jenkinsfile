@@ -11,6 +11,14 @@ pipeline {
         GITHUB_TOKEN = credentials('github-credentials')
     }
 
+    parameters {
+        booleanParam(
+            name: 'RELEASE_TO_RC',
+            defaultValue: false,
+            description: 'Check this to prepare a new release (creates pre-release branch and PR)'
+        )
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -21,29 +29,19 @@ pipeline {
                         returnStdout: true
                     ).trim()
                     env.CURRENT_BRANCH = env.GIT_BRANCH.replaceAll('origin/', '')
-                    echo "Building branch: ${env.CURRENT_BRANCH}"
-                    echo "Commit message: ${env.GIT_COMMIT_MSG}"
                 }
             }
         }
 
         stage('Build JAR') {
             steps {
-                sh '''
-                    mvn clean package
-                    echo "✅ JAR built successfully"
-                    ls -lh target/*.jar
-                '''
+                sh 'mvn clean package'
             }
         }
 
         stage('Build DEB Package') {
             steps {
-                sh '''
-                    ./build-deb.sh
-                    echo "✅ DEB package built"
-                    ls -lh *.deb
-                '''
+                sh './build-deb.sh'
             }
         }
 
@@ -53,10 +51,14 @@ pipeline {
             }
         }
 
+        // This uses semantic release to bump version, generate changelog and create tag.
+        // Since we are working on branch pre-release, tag will be created there and will need to be moved to main
+        // once completed.
         stage('Prepare Release') {
             when {
                 allOf {
                     branch 'main'
+                    expression { params.RELEASE_TO_RC == true }
                     not {
                         expression {
                             return env.GIT_COMMIT_MSG.contains('[skip ci]') ||
@@ -67,8 +69,6 @@ pipeline {
             }
             steps {
                 script {
-                    echo "🚀 Starting release preparation..."
-
                     sh '''
                         git config user.name "Jenkins CI"
                         git config user.email "jenkins@assext.com"
@@ -90,7 +90,6 @@ pipeline {
                         fi
 
                         git checkout -b ${env.PRE_RELEASE_BRANCH}
-
                         git push https://${GIT_CREDENTIALS_USR}:${GIT_CREDENTIALS_PSW}@github.com/${GIT_CREDENTIALS_USR}/automated-release-demo.git ${env.PRE_RELEASE_BRANCH}
                     """
 
@@ -98,12 +97,7 @@ pipeline {
                         "GIT_BRANCH=${env.PRE_RELEASE_BRANCH}",
                         "BRANCH_NAME=${env.PRE_RELEASE_BRANCH}"
                     ]) {
-                        sh '''
-                            echo "Current branch: $(git rev-parse --abbrev-ref HEAD)"
-                            echo "GIT_BRANCH env: $GIT_BRANCH"
-
-                            npx semantic-release --no-ci
-                        '''
+                        sh 'npx semantic-release --no-ci'
                     }
 
                     env.RELEASE_VERSION = sh(
@@ -111,22 +105,11 @@ pipeline {
                         returnStdout: true
                     ).trim()
 
-                    echo "✅ Created version: ${env.RELEASE_VERSION}"
-
                     sh """
                         git push https://${GIT_CREDENTIALS_USR}:${GIT_CREDENTIALS_PSW}@github.com/${GIT_CREDENTIALS_USR}/automated-release-demo.git ${env.PRE_RELEASE_BRANCH} --follow-tags
                     """
 
-                    def prBody = """🤖 Automated release preparation for version ${env.RELEASE_VERSION}
-
-## Changes
-- Version bumped to ${env.RELEASE_VERSION}
-- CHANGELOG.md updated
-- POM.xml updated
-
-**Review and approve to complete the release.**
-
-Tag ${env.RELEASE_VERSION} will be on the last commit of main after merge (use rebase and merge!)."""
+                    def prBody = """🤖 Automated release preparation for ${env.RELEASE_VERSION}"""
 
                     sh """
                         curl -X POST \
@@ -140,13 +123,12 @@ Tag ${env.RELEASE_VERSION} will be on the last commit of main after merge (use r
                         script: 'cat pr-response.json | grep -o \'"number": [0-9]*\' | grep -o \'[0-9]*\'',
                         returnStdout: true
                     ).trim()
-
-                    echo "✅ Created PR #${env.PR_NUMBER}"
                 }
             }
         }
 
-        stage('Move release tag to main') {
+        // Once pre-release has been merged into main, we move the tag created by semantic release on main
+        stage('Move Tag to Main') {
             when {
                 allOf {
                     branch 'main'
@@ -159,73 +141,59 @@ Tag ${env.RELEASE_VERSION} will be on the last commit of main after merge (use r
                             script: 'git tag --points-at HEAD',
                             returnStdout: true
                         ).trim()
-
-                        if (tagsOnCurrentCommit) {
-                            echo "✅ Current commit already has tag(s): ${tagsOnCurrentCommit}"
-                            return false
-                        } else {
-                            echo "🔄 Current commit has no tags, need to move tag"
-                            return true
-                        }
+                        return !tagsOnCurrentCommit
                     }
                 }
             }
             steps {
                 script {
-                    echo "🔄 Moving tag to main commit after merge..."
-
                     sh '''
                         git config user.name "Jenkins CI"
                         git config user.email "jenkins@assext.com"
 
-                        VERSION=$(echo "${GIT_COMMIT_MSG}" | grep -oP "chore\\(release\\): \\K[0-9]+\\.[0-9]+\\.[0-9]+" || echo "")
-
-                        if [ -z "$VERSION" ]; then
-                            echo "❌ Could not extract version from commit message: ${GIT_COMMIT_MSG}"
-                            exit 1
-                        fi
-
+                        VERSION=$(echo "${GIT_COMMIT_MSG}" | grep -oP "chore\\(release\\): \\K[0-9]+\\.[0-9]+\\.[0-9]+")
                         TAG="v${VERSION}"
-                        echo "📦 Version: ${VERSION}"
-                        echo "🏷️  Tag: ${TAG}"
 
                         git fetch --tags
 
                         if git rev-parse "${TAG}" >/dev/null 2>&1; then
-                            OLD_TAG_COMMIT=$(git rev-parse "${TAG}")
-                            echo "Old tag ${TAG} points to: ${OLD_TAG_COMMIT}"
-
-                            echo "Deleting old tag ${TAG}..."
-                            git push https://${GIT_CREDENTIALS_USR}:${GIT_CREDENTIALS_PSW}@github.com/${GIT_CREDENTIALS_USR}/automated-release-demo.git --delete "${TAG}" || true
-                            git tag -d "${TAG}" || true
+                            git push https://${GIT_CREDENTIALS_USR}:${GIT_CREDENTIALS_PSW}@github.com/${GIT_CREDENTIALS_USR}/automated-release-demo.git --delete "${TAG}"
+                            git tag -d "${TAG}"
                         fi
 
-                        CURRENT_COMMIT=$(git rev-parse HEAD)
-                        echo "Creating tag ${TAG} on main commit: ${CURRENT_COMMIT}"
-
                         git tag -a "${TAG}" -m "Release ${VERSION}"
-
                         git push https://${GIT_CREDENTIALS_USR}:${GIT_CREDENTIALS_PSW}@github.com/${GIT_CREDENTIALS_USR}/automated-release-demo.git "${TAG}"
-
-                        echo "✅ Tag ${TAG} successfully moved to main!"
-                        echo "Verify at: https://github.com/${GIT_CREDENTIALS_USR}/automated-release-demo/releases/tag/${TAG}"
                     '''
                 }
             }
         }
 
-        stage('Release to Public') {
+        // When building a tag on main, we publish on artifactory
+        stage('Release to RC') {
             when {
-                buildingTag()
+                allOf {
+                    branch 'main'
+                    expression {
+                        return env.GIT_COMMIT_MSG.contains('chore(release):') &&
+                               env.GIT_COMMIT_MSG.contains('[skip ci]')
+                    }
+                    expression {
+                        def tagsOnCurrentCommit = sh(
+                            script: 'git tag --points-at HEAD',
+                            returnStdout: true
+                        ).trim()
+                        return tagsOnCurrentCommit != ''
+                    }
+                }
             }
             steps {
                 script {
-                    def tagName = env.TAG_NAME ?: sh(script: 'git describe --tags --exact-match', returnStdout: true).trim()
+                    def tagName = sh(script: 'git tag --points-at HEAD', returnStdout: true).trim()
                     def version = sh(script: 'mvn help:evaluate -Dexpression=project.version -q -DforceStdout', returnStdout: true).trim()
 
                     echo """
                     ═══════════════════════════════════════════════════════════
-                    🎉 RELEASING TO PUBLIC REPOSITORY
+                    🎉 RELEASING TO RC REPOSITORY
                     ═══════════════════════════════════════════════════════════
 
                     Tag:     ${tagName}
@@ -245,30 +213,6 @@ Tag ${env.RELEASE_VERSION} will be on the last commit of main after merge (use r
     }
 
     post {
-        success {
-            script {
-                if (env.PRE_RELEASE_BRANCH) {
-                    echo """
-                    ✅ Release preparation complete!
-
-                    Branch: ${env.PRE_RELEASE_BRANCH}
-                    Version: ${env.RELEASE_VERSION}
-                    PR: #${env.PR_NUMBER}
-                    URL: https://github.com/${GIT_CREDENTIALS_USR}/automated-release-demo/pull/${env.PR_NUMBER}
-
-                    ⚠️  IMPORTANT: Merge using 'Rebase and merge' to keep tag on last commit!
-                    After merge, manually trigger build for tag ${env.RELEASE_VERSION} to publish release.
-                    """
-                } else if (env.TAG_NAME) {
-                    echo "🎉 Release published successfully!"
-                } else {
-                    echo "✅ Build completed successfully"
-                }
-            }
-        }
-        failure {
-            echo "❌ Build failed!"
-        }
         always {
             cleanWs()
         }
