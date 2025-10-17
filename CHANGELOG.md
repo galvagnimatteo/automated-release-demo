@@ -9,6 +9,17 @@
 * playing ([ef85a7a](https://github.com/[secure]/automated-release-demo/commit/ef85a7af09d3119f825f038ede5dc2450a38febc))
 * playing ([907673f](https://github.com/[secure]/automated-release-demo/commit/907673f8b0d66e273434a806fc1d8cfb718f4cbb))
 
+## 1.0.0 (2025-10-17)
+
+### Features
+
+* gitignore ([19062a5](https://github.com/[secure]/automated-release-demo/commit/19062a5e6987f6ef0061a90fa21e8cae5bb253d1))
+* jenkinsfile ([b25923f](https://github.com/[secure]/automated-release-demo/commit/b25923f77644b6dfa51721a1f2bfd9678859d43f))
+* playing ([771f4ef](https://github.com/[secure]/automated-release-demo/commit/771f4ef2f8bea3a64b0dc78e9fc414639850e0f7))
+* playing ([bb6c727](https://github.com/[secure]/automated-release-demo/commit/bb6c727bb2959f9b19ba8a3a17d1190343ed71ae))
+* playing ([ef85a7a](https://github.com/[secure]/automated-release-demo/commit/ef85a7af09d3119f825f038ede5dc2450a38febc))
+* playing ([907673f](https://github.com/[secure]/automated-release-demo/commit/907673f8b0d66e273434a806fc1d8cfb718f4cbb))
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
