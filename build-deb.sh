@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-REVISION="1.0.2"
+REVISION="2.0.0"
 CHANGE_LIST="-SNAPSHOT"
 VERSION="${REVISION}${CHANGE_LIST}"
 PACKAGE_NAME="automated-release-demo"
