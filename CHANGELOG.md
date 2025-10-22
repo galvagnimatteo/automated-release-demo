@@ -1,3 +1,13 @@
+## [3.0.0](https://github.com/[secure]/automated-release-demo/compare/v2.1.0...v3.0.0) (2025-10-22)
+
+### ⚠ BREAKING CHANGES
+
+* implemented the feature to end all features requests (#27)
+
+### Features
+
+* implemented the feature to end all features requests ([#27](https://github.com/[secure]/automated-release-demo/issues/27)) ([a49935b](https://github.com/[secure]/automated-release-demo/commit/a49935b37d2f68540847c9acdd839906b375148b))
+
 ## [2.1.0](https://github.com/[secure]/automated-release-demo/compare/v2.0.0...v2.1.0) (2025-10-17)
 
 ### Features
