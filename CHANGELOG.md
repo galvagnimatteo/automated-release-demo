@@ -1,3 +1,9 @@
+## [3.1.0](https://github.com/[secure]/automated-release-demo/compare/v3.0.0...v3.1.0) (2025-10-22)
+
+### Features
+
+* removed comment ([#29](https://github.com/[secure]/automated-release-demo/issues/29)) ([f10ae7a](https://github.com/[secure]/automated-release-demo/commit/f10ae7a1885a0c2ab381d97a43cb51198a8c1d8a))
+
 ## [3.0.0](https://github.com/[secure]/automated-release-demo/compare/v2.1.0...v3.0.0) (2025-10-22)
 
 ### ⚠ BREAKING CHANGES
